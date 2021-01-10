@@ -26,7 +26,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import tensorflow as tf
+
 from keras.models import Model
 from keras import layers
 from keras.layers import Input
@@ -89,13 +89,21 @@ class BilinearUpsampling(Layer):
 
     def call(self, inputs):
         if self.upsampling:
-            return tf.image.resize_bilinear(inputs, (inputs.shape[1] * self.upsampling[0],
-                                                       inputs.shape[2] * self.upsampling[1]),
-                                              align_corners=True)
+            return K.resize_images(
+                inputs,
+                width_factor=int(inputs.shape[1] * self.upsampling[0]),
+                height_factor=int(inputs.shape[2] * self.upsampling[1]),
+                data_format='channels_first',
+                interpolation='bilinear'
+            )
         else:
-            return tf.image.resize_bilinear(inputs, (self.output_size[0],
-                                                       self.output_size[1]),
-                                              align_corners=True)
+            return K.resize_images(
+                inputs,
+                width_factor=self.output_size[0],
+                height_factor=self.output_size[1],
+                data_format='channels_first',
+                interpolation='bilinear'
+            )
 
     def get_config(self):
         config = {'upsampling': self.upsampling,
@@ -468,7 +476,7 @@ def Deeplabv3(weights='pascal_voc', input_tensor=None, input_shape=(512, 512, 3)
     x = BatchNormalization(name='concat_projection_BN', epsilon=1e-5)(x)
     x = Activation('relu')(x)
     x = Dropout(0.1)(x)
-    
+
     # DeepLab v.3+ decoder
 
     if backbone == 'xception':
