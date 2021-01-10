@@ -475,6 +475,7 @@ def Deeplabv3(
 	x = Conv2D(256, (1, 1), padding='same', use_bias=False, name='concat_projection')(x)
 	x = BatchNormalization(name='concat_projection_BN', epsilon=1e-5)(x)
 	x = Activation('relu')(x)
+	x = Dropout(dropout)(x) if dropout > 0 else x
 
 	# DeepLab v.3+ decoder
 
@@ -500,7 +501,6 @@ def Deeplabv3(
 	else:
 		last_layer_name = 'custom_logits_semantic'
 
-	x = Dropout(dropout)(x) if dropout > 0 else x
 	x = Conv2D(classes, (1, 1), padding='same', name=last_layer_name)(x)
 	x = BilinearUpsampling(output_size=(input_shape[0], input_shape[1]))(x)
 
