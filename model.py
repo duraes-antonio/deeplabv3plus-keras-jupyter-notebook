@@ -282,8 +282,10 @@ def _inverted_res_block(inputs, expansion, stride, alpha, filters, block_id, ski
 	return x
 
 
-def Deeplabv3(weights='pascal_voc', input_tensor=None, input_shape=(512, 512, 3), classes=21, backbone='mobilenetv2',
-              OS=16, alpha=1.):
+def Deeplabv3(
+		weights='pascal_voc', input_tensor=None, input_shape=(512, 512, 3),
+		classes=21, backbone='mobilenetv2', OS=16, alpha=1., dropout: float = 0
+):
 	""" Instantiates the Deeplabv3+ architecture
 
     Optionally loads weights pre-trained
@@ -446,8 +448,7 @@ def Deeplabv3(weights='pascal_voc', input_tensor=None, input_shape=(512, 512, 3)
 	# Image Feature branch
 	# out_shape = int(np.ceil(input_shape[0] / OS))
 	b4 = AveragePooling2D(pool_size=(int(np.ceil(input_shape[0] / OS)), int(np.ceil(input_shape[1] / OS))))(x)
-	b4 = Conv2D(256, (1, 1), padding='same',
-	            use_bias=False, name='image_pooling')(b4)
+	b4 = Conv2D(256, (1, 1), padding='same', use_bias=False, name='image_pooling')(b4)
 	b4 = BatchNormalization(name='image_pooling_BN', epsilon=1e-5)(b4)
 	b4 = Activation('relu')(b4)
 	b4 = BilinearUpsampling((int(np.ceil(input_shape[0] / OS)), int(np.ceil(input_shape[1] / OS))))(b4)
@@ -460,25 +461,21 @@ def Deeplabv3(weights='pascal_voc', input_tensor=None, input_shape=(512, 512, 3)
 	# there are only 2 branches in mobilenetV2. not sure why
 	if backbone == 'xception':
 		# rate = 6 (12)
-		b1 = SepConv_BN(x, 256, 'aspp1',
-		                rate=atrous_rates[0], depth_activation=True, epsilon=1e-5)
+		b1 = SepConv_BN(x, 256, 'aspp1', rate=atrous_rates[0], depth_activation=True, epsilon=1e-5)
 		# rate = 12 (24)
-		b2 = SepConv_BN(x, 256, 'aspp2',
-		                rate=atrous_rates[1], depth_activation=True, epsilon=1e-5)
+		b2 = SepConv_BN(x, 256, 'aspp2', rate=atrous_rates[1], depth_activation=True, epsilon=1e-5)
 		# rate = 18 (36)
-		b3 = SepConv_BN(x, 256, 'aspp3',
-		                rate=atrous_rates[2], depth_activation=True, epsilon=1e-5)
+		b3 = SepConv_BN(x, 256, 'aspp3', rate=atrous_rates[2], depth_activation=True, epsilon=1e-5)
 
 		# concatenate ASPP branches & project
 		x = Concatenate()([b4, b0, b1, b2, b3])
 	else:
 		x = Concatenate()([b4, b0])
 
-	x = Conv2D(256, (1, 1), padding='same',
-	           use_bias=False, name='concat_projection')(x)
+	x = Dropout(dropout)(x) if dropout > 0 else x
+	x = Conv2D(256, (1, 1), padding='same', use_bias=False, name='concat_projection')(x)
 	x = BatchNormalization(name='concat_projection_BN', epsilon=1e-5)(x)
 	x = Activation('relu')(x)
-	x = Dropout(0.1)(x)
 
 	# DeepLab v.3+ decoder
 
